@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Repo Normalize"
+  short_description: "Normalize Git repo line endings on first touch"
+  default_prompt: "Use $git-repo-normalize to standardize line endings before working in this Git repository."
