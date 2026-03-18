@@ -1,0 +1,4 @@
+interface:
+  display_name: "Node.js Use"
+  short_description: "Manage Node.js runtimes with mise and migrate legacy toolchains"
+  default_prompt: "Use $nodejs-use to manage Node.js with mise, including project version pinning, package manager handling, and migration from volta/fnm/.node-version/.nvmrc."
