@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dependency Reuse First"
+  short_description: "Research reusable dependencies before coding"
+  default_prompt: "Use $dependency-reuse-first to evaluate popular, well-maintained dependencies before implementing a new feature, and prefer reuse over custom code when the fit is acceptable."
