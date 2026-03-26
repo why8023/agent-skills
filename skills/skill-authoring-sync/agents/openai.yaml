@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Authoring Sync"
+  short_description: "Create or update repo skills, then confirm, commit, and sync to Codex"
+  default_prompt: "Use $skill-authoring-sync to create or update a skill in this repository, pause for sync confirmation, then commit and install or refresh it in local Codex via npx skills."
