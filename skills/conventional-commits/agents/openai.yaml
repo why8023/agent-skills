@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conventional Commits"
+  short_description: "Write Conventional Commits messages with Chinese content"
+  default_prompt: "Use $conventional-commits before running git commit to produce a Conventional Commits message that matches the staged changes and uses Chinese for the human-readable content."
