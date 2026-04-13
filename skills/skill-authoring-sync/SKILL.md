@@ -1,6 +1,6 @@
 ---
 name: skill-authoring-sync
-description: 在 skills 仓库中创建或更新一个 skill，并在编辑完成后暂停等待用户确认是否同步到本机。确认后，只提交本次相关 skill 变更，自动生成 Git commit，并用 `npx skills` 按当前仓库来源将目标 skill 安装或更新到本机 Codex。适用于维护 `skills/` 仓库、创建新 skill、修订已有 skill，以及需要把结果立即同步到本机测试的场景。
+description: 在 skills 仓库中创建或更新一个 skill，并在编辑完成后只提交本次相关 skill 变更、推送到远端仓库，再用 `npx skills` 从远端仓库将目标 skill 安装或更新到本机 Codex。适用于维护 `skills/` 仓库、创建新 skill、修订已有 skill，以及需要把远端最新结果立即同步到本机测试的场景。
 ---
 
 # Skill Authoring Sync
@@ -19,33 +19,34 @@ description: 在 skills 仓库中创建或更新一个 skill，并在编辑完�
    - 保持 `SKILL.md` 简洁，把流程、命令和决策规则写清即可。
    - 如果仓库已有 `agents/openai.yaml` 约定，保持它与 `SKILL.md` 同步。
 
-3. 在询问同步前先本地验证。
+3. 发布前先本地验证。
    - 先看 `git status --short`，确认当前仓库还有哪些改动。
    - 做一次非破坏性检查，确认 `npx skills` 能发现目标 skill。
    - 仓库若已有 `mise.toml`、`.mise.toml` 或 `.tool-versions`，按仓库声明执行；否则在一次性命令中使用 `mise exec node@24 -- ...`。
    - 在 Windows PowerShell 中，用 `cmd /c "mise exec node@24 -- npx skills add <source> --list"` 转发参数，避免 `--list`、`-g` 之类的参数被 PowerShell 或 `mise` 误解析。
-   - 如果要验证当前工作区里尚未 push 的最新结果，`<source>` 用当前仓库根目录绝对路径；如果要验证远端仓库可见内容，`<source>` 用 `git remote get-url origin`。
+   - 这里的 `<source>` 优先使用当前仓库根目录绝对路径，用来确认工作区里的最新 skill 内容可被发现。
 
-4. 暂停并等待用户确认。
-   - 变更完成后，不要直接 commit 或同步。
-   - 明确问一句：`是否现在同步到本机 Codex skills？`
-   - 用户未明确同意前，只汇报结果，停在这里。
-
-5. 用户确认后提交 Git 变更。
+4. 提交 Git 变更。
    - 再次检查 `git status --short`。
    - 只 stage 本次 skill 相关文件；不要把无关改动一起提交。
    - 提交信息默认使用：
      - 新增 skill：`feat(skills): add <skill-name>`
      - 更新 skill：`feat(skills): update <skill-name>`
-   - 如果相关变更已经提交，直接进入同步，不要重复制造空提交。
-   - 除非用户明确要求，不要 push。
+   - 如果相关变更已经提交，直接进入推送，不要重复制造空提交。
+   - 默认提交到当前分支；除非用户明确要求，不要改写历史。
 
-6. 解析同步来源。
-   - 优先级：用户显式给出的仓库来源 -> `git remote get-url origin` -> 当前仓库根目录绝对路径。
-   - 如果刚提交的变更还没有 push，而用户要“立即在本机用到最新内容”，优先使用当前仓库根目录绝对路径。
-   - 如果用户明确要求按 GitHub 地址同步，就使用 `origin`；同时提示未 push 的本地提交不会出现在远端安装结果里。
+5. 推送到远端仓库。
+   - 先确认当前分支名和 `origin` 远端都存在。
+   - 还没有 upstream 时，执行 `git push -u origin <current-branch>`。
+   - 已有 upstream 时，执行 `git push origin <current-branch>`。
+   - 如果 push 因远端分叉、权限或保护分支失败，不要强推；先把失败原因说明清楚再停下。
 
-7. 用 `vercel-labs/skills` 同步到本机 Codex。
+6. 解析远端同步来源。
+   - 默认使用 `git remote get-url origin` 作为唯一同步来源。
+   - 推送成功后再继续；不要从尚未包含最新提交的旧远端结果进行本机安装。
+   - 如果仓库缺少 `origin`，或用户明确指定另一个远端地址，再按用户要求处理。
+
+7. 用 `vercel-labs/skills` 从远端同步到本机 Codex。
    - 同步单个 skill：
 
 ```powershell
@@ -60,15 +61,17 @@ cmd /c "mise exec node@24 -- npx skills add <source> -g -a codex --skill '*' -y"
 
    - `skills add` 可同时承担新增和刷新已安装 skill 的职责；只有用户明确要批量刷新所有已安装来源时，再考虑 `npx skills update`。
    - 默认安装到全局 Codex skills（`-g -a codex`）。只有用户明确要求项目级或其他 agent 时才改动目标。
+   - 这里的 `<source>` 默认应是 `git remote get-url origin` 返回的远端仓库地址，而不是本地路径。
 
 8. 验证结果。
    - 运行 `cmd /c "mise exec node@24 -- npx skills list -g -a codex"` 或等价命令，确认目标 skill 已出现在本机 Codex skills 中。
-   - 向用户说明：提交是否已完成、使用了哪个同步来源、以及本机 Codex 是否已经看到目标 skill。
+   - 向用户说明：提交是否已完成、是否已 push 成功、使用了哪个远端同步来源、以及本机 Codex 是否已经看到目标 skill。
 
 ## Guardrails
 
 - 不要把无关未提交改动一起 stage 或 commit。
-- 不要假设远端地址一定代表当前本地最新提交。
-- 不要在用户确认前执行 commit 或安装。
-- 不要默认 push、tag 或发布 release。
-- 如果 `origin` 缺失且用户坚持用远端来源，再向用户确认具体地址。
+- 不要等待额外确认才 commit、push、同步；默认按本技能流程完成闭环。
+- 不要假设远端地址已经包含当前本地改动；必须先 push 成功再从远端安装。
+- 不要默认 push 其他分支、tag 或发布 release。
+- 不要因为 push 失败就改用本地路径偷偷同步，这会掩盖远端状态不一致的问题。
+- 如果 `origin` 缺失，或远端不是本次应使用的仓库，再向用户确认具体地址。
