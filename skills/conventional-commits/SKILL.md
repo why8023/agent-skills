@@ -1,6 +1,6 @@
 ---
 name: conventional-commits
-description: 当 Agent 准备执行 `git commit`、编写或改写 commit message、整理 staged 变更对应的提交说明时使用。要求提交信息遵循 Conventional Commits 1.0.0：使用 `<type>[optional scope]: <description>` 结构，并且提交说明内容默认使用中文，在需要时正确表达正文、脚注和 `BREAKING CHANGE`。
+description: "当 Agent 准备执行 `git commit`、编写或改写 commit message、整理 staged 变更对应的提交说明时使用。要求提交信息遵循 Conventional Commits 1.0.0：使用 `<type>[optional scope]: <description>` 结构，并且提交说明内容默认使用中文，在需要时正确表达正文、脚注和 `BREAKING CHANGE`。"
 ---
 
 # Conventional Commits
