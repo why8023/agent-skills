@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docling Word"
+  short_description: "Parse .docx to Markdown with attachments"
+  default_prompt: "Use $docling-word to convert this .docx file with Docling and place extracted assets into a sibling attachments folder."
