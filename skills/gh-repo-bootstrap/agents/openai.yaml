@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH Repo Bootstrap"
+  short_description: "Create GitHub repos with gh and publish first commits"
+  default_prompt: "Use $gh-repo-bootstrap to create a GitHub repository with gh, connect this project to it, and safely perform the first commit and push."
