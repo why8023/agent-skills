@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Authoring Sync"
+  short_description: "Create central skills and install them into projects"
+  default_prompt: "Use $skill-authoring-sync to create or update a skill in this repository, publish it through git, and install it into a target project with npx skills."
