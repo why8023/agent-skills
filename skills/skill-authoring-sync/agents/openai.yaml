@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Authoring Sync"
-  short_description: "Create or update repo skills, then push and sync to Codex"
-  default_prompt: "Use $skill-authoring-sync to create or update a skill in this repository, commit it, push it to the remote repo, and then install or refresh it in local Codex from that remote via npx skills."
+  short_description: "Update repo skills, then push and sync to multiple agents"
+  default_prompt: "Use $skill-authoring-sync to create or update a skill in this repository, commit and push it, and then refresh the default multi-agent installs from that remote via npx skills."
