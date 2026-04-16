@@ -1,4 +1,4 @@
 interface:
   display_name: "Git Repo Normalize"
-  short_description: "Normalize Git repo line endings on first touch"
-  default_prompt: "Use $git-repo-normalize to standardize line endings before working in this Git repository."
+  short_description: "Normalize Git repo line endings only when drift or missing policy appears"
+  default_prompt: "Use $git-repo-normalize only when this repo lacks a committed line-ending policy, Git reports LF/CRLF drift, or the user explicitly asks to normalize line endings."
