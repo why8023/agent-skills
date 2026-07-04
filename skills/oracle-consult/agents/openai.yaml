@@ -1,0 +1,6 @@
+interface:
+  display_name: "Oracle Consult"
+  short_description: "Controlled Oracle consulting workflow"
+  default_prompt: "Use $oracle-consult to decide whether Oracle is justified, run dry-run first, and summarize verified findings."
+policy:
+  allow_implicit_invocation: true
