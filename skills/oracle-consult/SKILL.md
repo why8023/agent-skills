@@ -35,7 +35,7 @@ Use these defaults:
 2. Select the smallest useful file set.
 3. Run a dry-run with file reporting before the formal call.
 4. Refuse or reduce context if dry-run includes secrets, credentials, cookies, tokens, customer data, production logs, build artifacts, dependency folders, or unrelated files.
-5. Run Oracle in browser mode by default. Do not use API mode unless explicitly requested.
+5. Run Oracle in browser mode by default. Do not use API mode unless explicitly requested. For both local and remote browser runs, keep the current ChatGPT-selected model by default: pass `--browser-model-strategy current` or set `browser.modelStrategy = "current"` in the user Oracle config.
 6. Always write output to `.oracle-runs/`.
 7. Convert Oracle output into accepted findings, rejected findings, verification-needed findings, and local next actions.
 8. Verify locally before treating Oracle output as final.
