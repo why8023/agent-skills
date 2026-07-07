@@ -35,7 +35,7 @@ Use these defaults:
 2. Select the smallest useful file set.
 3. Run a dry-run with file reporting before the formal call.
 4. Refuse or reduce context if dry-run includes secrets, credentials, cookies, tokens, customer data, production logs, build artifacts, dependency folders, or unrelated files.
-5. Run Oracle in browser mode by default. Do not use API mode unless explicitly requested. For both local and remote browser runs, keep the current ChatGPT-selected model by default: pass `--browser-model-strategy current` or set `browser.modelStrategy = "current"` in the user Oracle config.
+5. Run Oracle in browser mode by default. Do not use API mode unless explicitly requested. For both local and remote browser runs, keep the current ChatGPT-selected model by default: pass `--browser-model-strategy current` or set `browser.modelStrategy = "current"` in the user Oracle config. For Deep Research, set both outer and browser waits to 90 minutes: pass `--timeout 90m` and `--browser-timeout 90m`, or use a wrapper that maps Deep Research to `-TimeoutMinutes 90` and `-BrowserTimeoutMinutes 90`.
 6. Always write output to `.oracle-runs/`.
 7. Convert Oracle output into accepted findings, rejected findings, verification-needed findings, and local next actions.
 8. Verify locally before treating Oracle output as final.
@@ -63,6 +63,8 @@ For Deep Research:
   -Risk high `
   -PromptPath ".oracle-runs\prompts\<date>-deep-research-short-topic.md" `
   -DeepResearch `
+  -TimeoutMinutes 90 `
+  -BrowserTimeoutMinutes 90 `
   -Run `
   -Approved
 ```
@@ -87,11 +89,31 @@ oracle `
   --engine browser `
   --browser-manual-login `
   --browser-model-strategy current `
+  --timeout 45m `
+  --browser-timeout 45m `
   --write-output ".oracle-runs/<date>-<task-type>-<slug>.md" `
   --slug "<task-type>-<slug>" `
   -p "<formal prompt>" `
   --file "<files>"
 ```
+
+For direct Deep Research formal calls, include both timeouts and the deep research mode:
+
+```powershell
+oracle `
+  --engine browser `
+  --browser-manual-login `
+  --browser-model-strategy current `
+  --browser-research deep `
+  --timeout 90m `
+  --browser-timeout 90m `
+  --write-output ".oracle-runs/<date>-deep-research-<slug>.md" `
+  --slug "deep-research-<slug>" `
+  -p "<research prompt>" `
+  --file "<files>"
+```
+
+If Deep Research finishes in the browser but Oracle's live/session output only shows the outer `ChatGPT said:` wrapper, treat the official ChatGPT artifact Markdown export as the authoritative report and cite that exported path in the final summary.
 
 ## Result Format
 
