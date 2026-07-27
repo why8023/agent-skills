@@ -1,0 +1,4 @@
+interface:
+  display_name: "UV 集中环境迁移"
+  short_description: "将项目 .venv 外移到指定位置并保留本地入口"
+  default_prompt: "Use $uv-centralized-envs to migrate this project's UV environment to a centralized location I specify, while keeping the project-local .venv entry compatible with VS Code and agents."
