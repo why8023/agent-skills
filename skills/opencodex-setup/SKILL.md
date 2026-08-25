@@ -50,6 +50,10 @@ description: 配置和管理 OpenCodex 本地代理服务，包括安装、多�
 
 ### 阿里云（百炼）
 
+阿里云百炼的 compatible-mode 端点同时支持 Chat Completions 和 Responses 两种协议。建议创建两个 provider 条目，分别走不同协议：
+
+**aliyun_r（Responses 协议，用于 qwen3.8-max 等通义模型）**：
+
     "aliyun_r": {
       "adapter": "openai-responses",
       "baseUrl": "https://ws-xxx.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
@@ -61,11 +65,23 @@ description: 配置和管理 OpenCodex 本地代理服务，包括安装、多�
       "modelDefaultReasoningEfforts": { "qwen3.8-max": "xhigh" }
     }
 
+**aliyun_c（Chat 协议，用于 kimi-k3 等第三方模型）**：
+
+    "aliyun_c": {
+      "adapter": "openai-chat",
+      "baseUrl": "https://ws-xxx.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "authMode": "key",
+      "apiKey": "sk-xxx"
+    }
+
 关键点：
 
-- adapter 必须是 openai-responses（不是 openai-chat）
+- 同一 baseUrl、同一 API Key，但 adapter 不同
+- aliyun_r 走 Responses 协议，适合 qwen3.8-max 等通义自研模型
+- aliyun_c 走 Chat Completions 协议，适合 kimi-k3 等第三方模型
+- 通过 provider/model 前缀显式指定走哪条路线，例如 aliyun_c/kimi-k3
+- 两条路互不干扰，可以同时在 Codex 中切换使用
 - modelReasoningEfforts 和 modelDefaultReasoningEfforts 必须配置，否则 reasoning_effort max 会导致 400
-- 一个服务商只保留一个启用条目，多余的设 disabled 为 true
 
 ## reasoning_effort 降级
 
