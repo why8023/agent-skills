@@ -1,0 +1,7 @@
+display_name: OpenCodex Setup
+short_description: Configure and troubleshoot OpenCodex local proxy for multi-model routing
+default_prompt: |
+  Use $opencodex-setup when the user asks to configure, manage, or troubleshoot OpenCodex.
+  This includes adding model providers (DeepSeek, Alibaba, OpenAI), setting context windows,
+  configuring reasoning_effort fallbacks, managing auto-start, and diagnosing errors like
+  502 proxy failures or 400 parameter incompatibilities.
