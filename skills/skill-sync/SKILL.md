@@ -1,13 +1,23 @@
 ---
 name: skill-sync
-description: 在 skills 仓库中创建、更新或重命名一个 skill，并在编辑完成后只提交本次相关 skill 变更、推送到远端仓库，再用 `npx skills` 从远端仓库将目标 skill 安装或更新到本机多 Agent 环境。默认同步 Universal、Codex、Claude Code、OpenClaw、Cursor、OpenCode、Qoder、Trae、Trae CN、Windsurf，并约定用 `--all` 表示“全部 skill + 全部受支持 agent”。
+description: 在 skills 仓库中创建、更新或重命名一个 skill，只提交相关变更并推送，再通过已配置的个人 APM 入口刷新受管安装；未采用 APM 的环境使用 npx skills。用于维护 Skill 源码与多 Agent 安装的一致性。
 ---
 
 # Skill Sync
 
 在开始前，确认当前仓库是否以 `skills/<skill-name>/` 组织 skill。默认交付物至少包含 `SKILL.md`；如果仓库已经使用 `agents/openai.yaml`，也一并创建或更新。
 
-## Default Sync Targets
+## 已采用个人 APM 管理时
+
+在选择安装器前，读取当前用户目录下 `.apm/agent-config.json`（若存在）。这是本机登记信息，包含 `repository` 配置仓库路径和 `entrypoint` 入口文件；不要把其中的机器路径或个人清单提交到此 Skill 源码仓库。
+
+- 对用户级受管 Skill，检查登记仓库的 `apm.yml` 是否明确引用当前仓库的目标 Skill 子目录。命中时，下面的源码编辑、验证、提交和推送步骤仍执行；发布成功后，以登记入口执行 `update --source <owner/repo/skill-subdirectory>`，然后执行 `check`。Windows 使用该仓库的 `manage.ps1`，Linux 使用 `manage.sh`。
+- 更新通过后，只提交、推送个人配置仓库中的清单版本变化，不加入缓存、锁文件或机器状态。必须先发布 Skill 源码，再固定该源码提交。
+- 受管目标及数量以个人清单为准，不再运行后文的全局 `npx skills add/update/remove`，也不扩展到默认全 Agent 列表。APM 失败时保留错误和旧版本，不自动切回另一安装器。
+- 如果登记文件存在但入口无效，停止受管同步并报告路径问题。新增或重命名尚未在清单中的 Skill，先显式修改个人清单并核对旧路径迁移，不自行混用两个安装器。
+- 明确的项目级安装仍遵守该项目自己的管理方式；没有 APM 登记、且不属于受管清单的环境，才继续下方原有 npx 流程。
+
+## 未采用 APM 的默认目标
 
 - 默认附加 agent 目标：`codex`、`claude-code`、`openclaw`、`cursor`、`opencode`、`qoder`、`trae`、`trae-cn`、`windsurf`。
 - `Universal` 由 `npx skills` 自动包含，对应 `.agents/skills`；默认不要额外写 `-a universal`。

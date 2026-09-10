@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Sync"
-  short_description: "Sync repo skills through git and npx skills"
-  default_prompt: "Use $skill-sync to create, update, or rename a skill in this repository, push it to the remote repo, and then refresh the matching local agent installs via npx skills."
+  short_description: "Publish skills and refresh APM or npx managed installs"
+  default_prompt: "Use $skill-sync to publish the relevant skill changes, detect the target environment's existing APM or npx skills manager, and refresh only its intended installs."

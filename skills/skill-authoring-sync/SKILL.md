@@ -1,6 +1,6 @@
 ---
 name: skill-authoring-sync
-description: 在 `why8023/agent-skills` 中央 skills 仓库中新增、更新或重命名一个 skill，并在完成后把该 skill 安装到某个业务项目根目录时使用。适用于“新建一个 skill”“把 skill 沉淀到中央仓库”“把中央 skill 安装到当前项目”“更新项目里已安装的某个中央 skill”等请求。覆盖 `skills/skill-name/` 目录创建、`SKILL.md` 与 `agents/openai.yaml` 编写、最小验证、按目标 skill 单独提交并 push，以及在目标项目中通过 `npx skills add why8023/agent-skills --skill skill-name` 做项目级安装或刷新。
+description: 在 why8023/agent-skills 中央仓库新增、更新或重命名 Skill，发布后按目标环境已有的 APM 或 npx skills 管理方式安装。用于沉淀中央 Skill、安装到业务项目，或刷新个人 APM 清单中的中央 Skill。
 ---
 
 # Skill Authoring Sync
@@ -8,6 +8,16 @@ description: 在 `why8023/agent-skills` 中央 skills 仓库中新增、更新�
 本技能把“中央仓库沉淀”和“项目侧安装”串成一次闭环。默认中央仓库是 `https://github.com/why8023/agent-skills.git`，默认安装方式是 `npx skills` 的 Project scope，不额外加 `-g`。
 
 ## Workflow
+
+### 先识别目标环境的管理方式
+
+- 用户要求刷新个人用户级安装时，先检查用户目录下 `.apm/agent-config.json`。读取其 `repository` 和 `entrypoint`，再检查登记仓库的 `apm.yml` 是否包含目标 Skill 的源路径。
+- 如果命中个人 APM 清单，完成下面的源码编写、验证、独立提交和推送后，调用登记仓库的 `manage.ps1`（Windows）或 `manage.sh`（Linux），执行 `update --source <owner/repo/skill-subdirectory>` 和 `check`；随后单独提交、推送个人清单更新。这条路径替代后面的 npx 安装步骤，目标 Agent 以个人清单为准。
+- 登记入口失效或 APM 更新失败时报告问题，不自动回退到 npx。个人机器路径、登录信息及私有清单不得写入中央 Skill 仓库。
+- 用户明确要求项目级安装时，先检查目标项目的 `apm.yml`。如果该项目已用 APM 管理此来源，使用其既有 APM 更新流程；没有采用 APM 的项目继续以下 npx 项目级流程，不因此扩大为全局安装。
+- 新增或重命名的 Skill 必须先加入目标清单并处理旧路径，再安装；不能仅因清单没有条目就绕过已有管理器。
+
+### 编写与发布
 
 1. 建立范围。
    - 确认目标 skill 名称，统一使用小写加连字符。
