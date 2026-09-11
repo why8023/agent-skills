@@ -1,6 +1,6 @@
 ---
 name: python-use
-description: 定义 Python 环境管理和依赖管理的强制规范。当 Agent 需要使用 Python、创建虚拟环境、安装依赖、管理 Python 版本时必须应用此技能。强制使用 uv 工具，禁止 pip/conda，确保项目级环境隔离。
+description: 使用 uv 管理 Python 版本、依赖和项目隔离环境，默认将真实虚拟环境放在项目外的 uv 集中缓存中，项目内仅保留 .venv 入口。当 Agent 使用 Python、创建或恢复虚拟环境、安装依赖时应用。
 ---
 
 # Python 环境管理与依赖管理规范
@@ -65,11 +65,12 @@ uv python find
 
 ---
 
-### 规则 3：依赖安装仅限当前项目目录
+### 规则 3：依赖仅安装到当前项目专属的外置环境
 
 **规则说明：**
-- 所有依赖必须安装在当前项目专属的虚拟环境中（默认由项目内 `.venv` 暴露）
-- 仅当明确应用 `$uv-centralized-envs` 时，`.venv` 可以是由 uv 管理、指向宿主机集中环境的 Junction/symlink；真实环境仍必须专属于该项目，禁止共享
+- 所有项目依赖必须安装在当前项目专属的虚拟环境中；默认启用 uv 的 `centralized-project-envs`，真实环境位于项目外，项目内 `.venv` 仅作为 uv 管理的 Junction/symlink 入口
+- 创建或恢复环境前，先完成下方“默认外置环境配置”；不要直接创建项目内的实体 `.venv`
+- 复用宿主机现有的外置 uv 缓存位置，不把盘符或物理环境路径写入项目；不同项目禁止共享同一环境
 - **严禁**使用任何全局安装参数，包括但不限于：
   - `--global`
   - `--user`
@@ -95,14 +96,14 @@ uv python find
 
 **规则说明：**
 - 每个项目必须拥有独立的虚拟环境
-- 虚拟环境必须以项目目录内的 `.venv` 作为入口（标准模式为实体目录；集中模式可以是受管链接）
+- 虚拟环境默认以项目目录内的 `.venv` 受管链接作为入口，实际文件位于项目外
 - 不同项目间不得共享虚拟环境
 - 虚拟环境目录（`.venv`）应加入 `.gitignore`
 
 **原因：**
 1. 避免项目间依赖冲突
 2. 确保项目的可移植性和可复现性
-3. 便于项目清理（删除项目目录即可完全清理）
+3. 项目源码与大体积环境分离；删除项目不会自动清理外置环境，不能据此宣称磁盘空间已释放
 4. 保护系统 Python 环境的稳定性
 
 **违反风险：**
@@ -112,7 +113,40 @@ uv python find
 
 ---
 
+## 默认外置环境配置
+
+在 `uv add`、`uv sync`、`uv run` 或 `uv venv` 首次创建环境前：
+
+1. 检查项目配置、`.venv` 类型及 `uv --version`，运行 `uv cache dir` 确认当前主机的有效缓存位置。
+   - 缓存已在项目外时直接复用，包括 uv 默认的用户缓存目录；不要为每个项目重新指定路径。
+   - 用户指定其他位置时，保留用户级 `uv.toml` 既有设置，仅更新 `cache-dir`；Windows 为 `%APPDATA%/uv/uv.toml`，Linux/macOS 为 `$XDG_CONFIG_HOME/uv/uv.toml`（未设置时为 `~/.config/uv/uv.toml`）。物理路径只存于主机配置。
+   - 检查 `UV_CACHE_DIR`、项目 `cache-dir`、命令包装脚本等覆盖项；若把缓存指向项目内，先在本次任务范围修正，不能只改用户配置就认定已外置。
+2. 在项目 `pyproject.toml` 中合并以下配置；已有 `uv.toml` 时，将 `preview-features` 合并到该文件顶层，避免被其优先级覆盖。保留其他预览功能，不重复声明表。
+
+   ```toml
+   [tool.uv]
+   preview-features = ["centralized-project-envs"]
+   ```
+
+3. 在项目或 uv workspace 根目录运行不带路径的 `uv venv`，或直接用 `uv sync --locked` / `uv add` 创建环境。
+   - `uv venv .venv` 等显式路径会绕过集中环境；不要使用。
+   - `UV_PROJECT_ENVIRONMENT`、`--active` 会选择显式环境，`--no-cache` 会禁用集中功能；先检查这些覆盖，不静默退回项目内环境。
+   - 只有 requirements 的旧项目若需补齐项目元数据，保留其依赖管理方式，不凭空解析升级依赖。一次性脚本可用 `uv run --no-project --with <依赖> python <脚本>`，无需为此创建项目内环境。
+4. 已有实体 `.venv` 时应用 `$uv-centralized-envs` 的审计、备份、按锁文件重建和验收流程；本 Skill 的默认规则不授权批量迁移其他项目或删除旧环境。已有有效外置链接时复用。
+5. 验证真实位置和可用性，而非仅检查 `.venv` 存在：
+
+   ```bash
+   uv run python -c "import sys; from pathlib import Path; print(Path(sys.prefix).resolve())"
+   uv pip check
+   ```
+
+   输出的真实环境必须位于项目外。需要编辑器兼容时检查 `.venv` 链接目标，VS Code 继续使用 `${workspaceFolder}/.venv`。uv 创建链接失败时可能写入路径文件；此时不能宣称编辑器或激活脚本兼容已通过。
+
+该功能目前为预览功能。若当前 uv 不支持，报告版本限制并按当前任务授权处理升级，不擅自改为项目内实体环境。不要把集中环境当作可随意删除的下载缓存，也不要为了本任务清空整个 uv 缓存。
+
 ## 标准命令参考
+
+以下项目命令均以前述集中配置生效为前提；优先使用 `uv run` 执行、`uv sync --locked` 恢复。
 
 ### 项目初始化
 
@@ -123,14 +157,13 @@ uv init
 # 初始化并指定项目名称
 uv init my-project
 
-# 创建虚拟环境（默认在 .venv 目录）
+# 先合并上述集中配置，再创建项目外环境（不传路径）
 uv venv
 
 # 创建指定 Python 版本的虚拟环境
 uv venv --python 3.11
 
-# 创建指定名称的虚拟环境
-uv venv .venv
+# 不使用 uv venv .venv：显式路径会绕过集中环境
 ```
 
 ### 依赖管理
@@ -243,7 +276,7 @@ uv init
 # 3. 设置 Python 版本
 uv python pin 3.11
 
-# 4. 创建虚拟环境
+# 4. 先合并集中配置、确认 uv cache dir 在项目外，再创建环境
 uv venv
 
 # 5. 添加项目依赖
@@ -255,8 +288,8 @@ uv add --dev pytest black ruff
 # 7. 锁定依赖版本
 uv lock
 
-# 8. 同步环境
-uv sync
+# 8. 按锁文件同步环境
+uv sync --locked
 ```
 
 ### 2. 克隆项目后的环境恢复
@@ -266,8 +299,8 @@ uv sync
 git clone https://github.com/user/project.git
 cd project
 
-# 创建虚拟环境并同步依赖
-uv sync
+# 确认集中配置与项目外缓存后，按已有锁文件恢复
+uv sync --locked
 ```
 
 ### 3. .gitignore 配置
@@ -276,7 +309,7 @@ uv sync
 
 ```gitignore
 # Python 虚拟环境
-.venv/
+.venv
 venv/
 
 # uv 缓存
@@ -298,7 +331,7 @@ build/
 
 ```
 my-project/
-├── .venv/              # 虚拟环境（不提交到版本控制）
+├── .venv               # 指向项目外环境的受管链接（不提交）
 ├── .python-version     # Python 版本固定
 ├── pyproject.toml      # 项目配置和依赖声明
 ├── uv.lock             # 依赖锁文件（提交到版本控制）
@@ -413,7 +446,9 @@ deactivate
 在执行 Python 相关操作前，请确认：
 
 - [ ] 当前工作目录是否为项目根目录
-- [ ] 是否已创建项目虚拟环境（`.venv` 目录存在）
+- [ ] 是否已启用集中环境，且有效缓存路径位于项目外
+- [ ] 是否确认真实环境位于项目外，`.venv` 入口类型与工具兼容性符合预期
+- [ ] 是否避免显式环境路径、`--active` 或 `--no-cache` 绕过集中环境
 - [ ] 是否使用 `uv` 命令（而非 pip/conda 等）
 - [ ] 依赖安装命令是否包含全局参数（如有则移除）
 - [ ] Python 版本是否与依赖要求兼容
@@ -423,5 +458,6 @@ deactivate
 ## 参考资源
 
 - [uv 官方文档](https://docs.astral.sh/uv/)
+- [uv 集中项目环境](https://docs.astral.sh/uv/concepts/projects/layout/#centralized-project-environments)
 - [uv GitHub 仓库](https://github.com/astral-sh/uv)
 - [pyproject.toml 规范](https://packaging.python.org/en/latest/specifications/pyproject-toml/)
