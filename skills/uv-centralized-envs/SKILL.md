@@ -1,56 +1,66 @@
 ---
 name: uv-centralized-envs
-description: 将 Python 项目环境迁到独立于 UV 下载缓存的集中环境目录，保留项目内 .venv 入口并兼容 VS Code、uv 和 AI Agent。用于外移 .venv、集中管理环境、分离 cache 与 env、保留编辑器解释器路径等需求。
+description: 将 UV 项目的大型 .venv 迁移到用户指定的集中缓存根目录，同时保留项目内 .venv 入口并兼容 VS Code、uv 和 AI Agent。用于“把 Python 环境移到其他盘/目录”“外移 .venv”“集中管理 uv 虚拟环境”“保留 VS Code 解释器路径”等需求。
 ---
 
-# 集中环境与 UV 缓存分离
+# UV 集中项目环境迁移
 
-UV 负责创建环境和管理依赖；真实环境放在独立的宿主机环境根目录，项目内保留原 `.venv` symlink/Junction。不同项目绝不共享环境。
+把每个项目的真实虚拟环境放在调用者指定的宿主机位置，同时让
+`${workspaceFolder}/.venv` 保持为项目的唯一入口。每个项目仍独立，绝不共享同一个环境。
 
-## 输入和边界
+## 原生管理约定
 
-- `environment_root`：用户指定或已有主机策略登记的环境根目录。可从用户 UV 配置目录的 `environment-policy.toml` 读取 `environment-root`；这是 Agent 约定，UV 不会自动读取。
-- `cache_root`：通过 `uv cache dir` 确认的下载/解包/构建缓存位置。与 `environment_root` 不相等、不互相包含。
-- `project_roots`：本次授权处理的项目；没有环境的项目是否初始化以用户范围为准。
-- `backup_root`：独立于下载缓存的恢复位置，可在环境根目录同盘创建带日期目录；已有用户授权时不重复确认。
-- `parity_required`：生产、基准、无可靠清单的环境默认要求逐包一致。
+- 使用 UV 原生 `centralized-project-envs`，由 UV 创建真实环境及项目入口；仅调用 `uv venv <自选路径>` 后手工建链，不算完成本流程的原生集中迁移。
+- 集中环境属于 UV 缓存布局，缓存与环境分属不同子目录，但 `uv cache prune` 会清理原生集中环境。若用户还要求二者位于互不包含的物理根目录，先核实当前版本能力并说明限制，不能默默改为另一种环境管理方案。
+- 对既有手工外置链接，按下述审计、备份、锁文件恢复与验收流程处理；不因链接存在就声称已受 UV 原生管理，也不直接全局开启预览触发批量重建。
 
-主机绝对路径只存本机配置，不写进业务项目或公共 Skill。名称保留 `uv-centralized-envs` 以兼容已有安装；本流程不默认采用 UV 的 `centralized-project-envs` 预览功能，因为该功能把环境作为可清理缓存存放。
+## 输入
+
+开始前确认以下信息；不要把示例盘符或物理路径写进项目文件。
+
+- `central_cache_root`：必填，当前主机上 UV 缓存与集中环境的绝对根目录。
+- `project_roots`：要迁移的一个或多个项目根目录。
+- `backup_root`：可选；迁移期间旧环境的临时备份位置。未给出时，先询问或在 `central_cache_root` 的同盘安全位置创建带日期的备份目录。
+- `parity_required`：旧环境是否必须逐包保持完全一致；基准、生产或没有依赖清单的项目默认设为 `true`。
+
+`central_cache_root` 是主机本地配置，不属于 Git，也不要求在不同机器上相同。
 
 ## 工作流
 
-1. 审计与备份。
-   - 检查项目 AGENTS.md、pyproject、锁文件、Python 版本、环境入口类型、真实目标和正在运行的进程。
-   - 记录 `uv pip list/freeze`、解释器、`uv pip check`、关键导入和现有问题。Windows 环境在 Linux 上只能验证文件保留时，应明确这一限制。
-   - 现有链接先解析归属，不递归删除链接目标。已在正确环境根目录的有效链接直接复用，不强行改名。
-   - 依赖声明不完整、editable 路径失效或存在额外包时，保留快照并报告；不要用一次 sync 删除这些差异。
+1. 先审计，不移动任何文件。
+   - 检查 `uv --version`、`pyproject.toml`、`uv.lock`、`.venv`、`.gitignore`、`.vscode/settings.json` 与项目级 `AGENTS.md`。
+   - 确认 `.venv` 是实体目录、Junction 还是 symlink；如果已是链接，先解析并记录真实目标，绝不递归删除链接目标。
+   - 对旧环境记录 `uv pip freeze`、Python 版本、关键导入和 `uv pip check` 结果。
 
-2. 配置分离位置。
-   - 用户 `uv.toml` 中 `cache-dir` 仅设置缓存目录；环境目录记录在独立的 `environment-policy.toml` 或已有主机策略中。
-   - 检查 `UV_CACHE_DIR`、项目配置、包装脚本、Dockerfile/Compose 覆盖及持久化。只修改本次相关项，保持现有服务运行。
-   - 分离模式下移除任务范围内 `centralized-project-envs` 开关，保留其他预览设置；检查全量 preview、命令参数和环境变量不能重新启用它。
-   - 不把所有项目的 `UV_PROJECT_ENVIRONMENT` 全局设置成同一个目录。该变量指定的是单个环境，绝不会自动按项目建立子目录。
+2. 先让依赖可复现。
+   - 已有 `pyproject.toml` 与 `uv.lock`：运行 `uv lock --check`，以 `uv sync --locked` 为恢复方式。
+   - 缺少清单：根据项目代码、脚本和现有环境识别直接依赖，创建最小 `pyproject.toml`，再生成并提交 `uv.lock`。
+   - 当 `parity_required=true`：以旧环境的完整版本快照约束解析，生成锁文件后比较迁移前后的 `uv pip freeze`；不要凭猜测重建环境或顺手升级包。
 
-3. 按授权选择迁移方式。
-   - **已有外置环境只调整根目录或分离缓存**：优先保留环境文件、版本和原入口。核对内部链接、shebang、激活脚本和 editable 绝对路径；需要物理迁移时使用有备份、校验和原子切换的方式。不能把简单移动宣称为按锁文件重建。
-   - **按锁文件重建**：先检查锁文件与完整包快照能否恢复原环境，在项目独占的新外置目录运行 `uv venv --python <版本> <完整环境路径>`。使用仅对本次命令生效的 `UV_PROJECT_ENVIRONMENT=<完整环境路径> uv sync --locked` 恢复并验证，之后建立/切换项目 `.venv` 链接。Windows 只在受控进程范围设置并恢复该变量。
-   - **没有可靠清单**：用户只要求外移时原样保留，不自动创建元数据或安装依赖。需要重建时先从现有快照与项目代码建立可复现声明，再恢复；不凭猜测升级。
-   - 新项目独占目录按项目名、规范化项目路径哈希和 Python 版本区分。同名项目、不同 checkout 不共享；已有环境不按新命名强制重排。
+3. 配置集中位置。
+   - 在当前主机的用户级 `uv.toml` 中保留既有配置并设置 `cache-dir = "<central_cache_root>"`。Windows 路径可使用正斜杠。
+   - 在项目 `pyproject.toml` 的 `[tool.uv]` 中启用 `preview-features = ["centralized-project-envs"]`；若已有其他预览功能，合并而非覆盖。
+   - 不把 `central_cache_root`、缓存目录名或物理环境路径提交到项目。
 
-4. 保持项目入口。
-   - 使用 symlink（Linux/macOS）或 Junction（Windows）让项目原 `.venv` 指向实际环境；已有 `venv` / `kid_ppg_env` 名称按用户范围保留。
-   - `.gitignore` 的 `.venv` 同时覆盖目录和链接，VS Code 使用 `${workspaceFolder}/.venv`。
-   - 日常用 `uv run` / `uv sync --locked`，不需要全局环境变量或修改业务代码。新 checkout 先建立独立外置环境及入口，不能直接裸 sync 创建项目内目录。
+4. 安全迁移。
+   - 先把完整旧环境移到已验证的 `backup_root`，并确认备份中的 Python 可执行；不要在没有可用备份时移除旧环境。
+   - 仅移除项目内 `.venv` 这个入口；若它是 Junction/symlink，只移除链接本身。
+   - 从项目根目录运行 `uv sync --locked`，让 UV 在集中缓存位置创建真实环境，并重新生成项目 `.venv` 入口。
+   - 物理环境必须由 UV 管理；不要手工复制、共享或硬编码它的名称。
 
-5. 验收和清理。
-   - 验证链接真实路径在环境根目录内、缓存目录外，检查 `uv run --no-sync` 的解释器、包快照、`uv pip check` 和关键导入。
-   - 重建项目额外验证 `uv lock --check`、`uv sync --locked --offline`；有严格一致性要求时必须比较完整版本快照。
-   - 用临时项目与临时缓存验证清缓存不会删除外置环境，不在实际开发缓存上做破坏性验收。
-   - 迁出缓存时检查指向缓存内容的符号链接；普通硬链接在删除缓存副本后仍可使用。不要保留缓存根到环境根的目录跳转来充当分离。
-   - 清除已不需要的兼容链接前确认调用方和现有进程；删除备份必须符合用户授权，不因验收通过自动清空全部缓存或恢复副本。
+5. 保持编辑器和 Agent 无感。
+   - `.vscode/settings.json` 使用 `"python.defaultInterpreterPath": "${workspaceFolder}/.venv"`。
+   - `.gitignore` 忽略 `.venv/`，但不要忽略或提交真实集中环境目录。
+   - 项目 `AGENTS.md` 说明：执行用 `uv run <command>`；恢复用 `uv sync --locked`；不要替换 `.venv` 链接，也不要写入物理缓存路径。
 
-## 报告
+6. 验收后再清理。
+   - 运行 `uv lock --check`、`uv sync --locked --offline`、`uv pip check` 和关键模块导入。
+   - 当 `parity_required=true`，比较新旧 `uv pip freeze`，必须零差异后才删除备份。
+   - 最后确认 `.venv` 指向集中环境，并报告：输入的根目录、项目入口、是否锁定、验证结果、删除的备份及可释放空间。
 
-说明最终缓存目录、环境根目录、项目入口、原样保留还是重建、版本/运行验证及未处理的原有问题。保留逐项目清单和恢复方法。磁盘空间是否释放与路径是否外移分别报告。
+## 约束
 
-参考：[UV 项目环境路径](https://docs.astral.sh/uv/concepts/projects/config/#project-environment-path)、[缓存清理](https://docs.astral.sh/uv/concepts/cache/#clearing-the-cache)、[原生集中预览](https://docs.astral.sh/uv/concepts/projects/layout/#centralized-project-environments)。
+- 优先使用项目的现有 `pyproject.toml`、`uv.lock` 和依赖声明；不要新增 pip、conda、Poetry 或共享虚拟环境方案。
+- 不因迁移而自动升级 UV 或依赖；确实需要升级时，使用 UV 的官方升级方式，并单独验证。
+- `.venv` 的入口保持项目内，因此 VS Code、工具脚本和 Agent 不需要知道真实路径。
+- 在另一台机器上使用时，只需重新提供该机器的 `central_cache_root` 并运行 `uv sync --locked`；不要复制宿主机的环境目录。
