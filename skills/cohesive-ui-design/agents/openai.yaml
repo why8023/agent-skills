@@ -1,0 +1,4 @@
+interface:
+  display_name: "一体化 UI 设计"
+  short_description: "以统一视觉、清晰层级和克制交互完成有行业辨识度的界面设计"
+  default_prompt: "使用 $cohesive-ui-design 按我的审美优化这个界面，结合当前场景决定布局、配色与交互细节。"
