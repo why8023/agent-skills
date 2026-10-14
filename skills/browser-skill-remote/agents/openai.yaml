@@ -1,0 +1,4 @@
+interface:
+  display_name: "BrowserSkill Remote"
+  short_description: "Discover and use configured remote BrowserSkill connections"
+  default_prompt: "Use $browser-skill-remote to discover the configured remote browser, verify its identity and live connection, and complete the requested browser task."
