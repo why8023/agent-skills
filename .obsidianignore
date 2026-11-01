@@ -1,2 +1,6 @@
-# Extends the whyspace vault root document and attachment allowlist when opened from that vault.
-# No additional project-specific exclusions identified.
+# Project-local scan exclusions: agent-skills.
+# Repository metadata and operating-system noise.
+.git/
+.codex-artifact-work/
+.DS_Store
+Thumbs.db
