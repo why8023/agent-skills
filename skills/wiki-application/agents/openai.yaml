@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wiki 申请填报"
+  short_description: "按真实模板整理各类 Wiki 申请，保留人工修改，核实数据截图并按授权提交"
+  default_prompt: "使用 $wiki-application，根据目标页面和材料整理本次申请，先核对模板、最新人工修改与已有授权，再完成相应的草稿或填报核验。"
